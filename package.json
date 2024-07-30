@@ -1,7 +1,6 @@
 {
   "name": "color-wheel-app",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.0", 
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@testing-library/jest-dom": "^5.17.0",
