@@ -196,6 +196,8 @@ function HsbToRgb(hsb) {
       return [Math.round(t * 255), Math.round(p * 255), Math.round(v * 255)];
     case 5:
       return [Math.round(v * 255), Math.round(p * 255), Math.round(q * 255)];
+    default:
+      return null;
   }
 }
 
