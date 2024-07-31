@@ -1,42 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { HexColorPicker } from "react-colorful";
+import ColorPicker from './ColorPicker';
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from './Alert';
 
 const ColorWheel = () => {
-  const [baseColor, setBaseColor] = useState("#ff0000");
+  const [baseColor, setBaseColor] = useState([255, 0, 0]);
   const [harmonyMode, setHarmonyMode] = useState("analogous");
   const [harmonicColors, setHarmonicColors] = useState([]);
 
-  const hslToHex = (h, s, l) => {
-    l /= 100;
-    const a = s * Math.min(l, 1 - l) / 100;
-    const f = n => {
-      const k = (n + h / 30) % 12;
-      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-      return Math.round(255 * color).toString(16).padStart(2, '0');
-    };
-    return `#${f(0)}${f(8)}${f(4)}`;
+  const rgbToHex = (r, g, b) => {
+    return "#" + [r, g, b].map(x => {
+      const hex = x.toString(16);
+      return hex.length === 1 ? "0" + hex : hex;
+    }).join('');
   };
 
-  const hexToHsl = (hex) => {
-    let r = parseInt(hex.slice(1, 3), 16) / 255;
-    let g = parseInt(hex.slice(3, 5), 16) / 255;
-    let b = parseInt(hex.slice(5, 7), 16) / 255;
+  const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [
+      parseInt(result[1], 16),
+      parseInt(result[2], 16),
+      parseInt(result[3], 16)
+    ] : null;
+  };
 
-    let max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const rgbToHsl = (r, g, b) => {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
     let h, s, l = (max + min) / 2;
 
     if (max === min) {
       h = s = 0;
     } else {
-      let d = max - min;
+      const d = max - min;
       s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
       switch (max) {
         case r: h = (g - b) / d + (g < b ? 6 : 0); break;
         case g: h = (b - r) / d + 2; break;
         case b: h = (r - g) / d + 4; break;
-        default: break;
       }
       h /= 6;
     }
@@ -44,44 +47,72 @@ const ColorWheel = () => {
     return [h * 360, s * 100, l * 100];
   };
 
+  const hslToRgb = (h, s, l) => {
+    h /= 360;
+    s /= 100;
+    l /= 100;
+    let r, g, b;
+
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  };
+
   const calculateHarmonicColors = () => {
-    const [h, s, l] = hexToHsl(baseColor);
+    const [h, s, l] = rgbToHsl(...baseColor);
     let colors = [];
 
     switch (harmonyMode) {
       case "analogous":
         colors = [
-          hslToHex((h + 30) % 360, s, l),
+          hslToRgb((h + 30) % 360, s, l),
           baseColor,
-          hslToHex((h + 330) % 360, s, l)
+          hslToRgb((h + 330) % 360, s, l)
         ];
         break;
       case "monochromatic":
         colors = [
-          hslToHex(h, s, Math.max(0, l - 30)),
+          hslToRgb(h, s, Math.max(0, l - 30)),
           baseColor,
-          hslToHex(h, s, Math.min(100, l + 30))
+          hslToRgb(h, s, Math.min(100, l + 30))
         ];
         break;
       case "complementary":
         colors = [
           baseColor,
-          hslToHex((h + 180) % 360, s, l)
+          hslToRgb((h + 180) % 360, s, l)
         ];
         break;
       case "triad":
         colors = [
-          hslToHex((h + 120) % 360, s, l),
+          hslToRgb((h + 120) % 360, s, l),
           baseColor,
-          hslToHex((h + 240) % 360, s, l)
+          hslToRgb((h + 240) % 360, s, l)
         ];
         break;
       case "tetrad":
         colors = [
           baseColor,
-          hslToHex((h + 90) % 360, s, l),
-          hslToHex((h + 180) % 360, s, l),
-          hslToHex((h + 270) % 360, s, l)
+          hslToRgb((h + 90) % 360, s, l),
+          hslToRgb((h + 180) % 360, s, l),
+          hslToRgb((h + 270) % 360, s, l)
         ];
         break;
       default:
@@ -101,7 +132,10 @@ const ColorWheel = () => {
       
       <div className="mb-4">
         <label className="block mb-2">Base Color:</label>
-        <HexColorPicker color={baseColor} onChange={setBaseColor} />
+        <ColorPicker
+          initialColor={baseColor}
+          onColorChange={setBaseColor}
+        />
       </div>
       
       <div className="mb-4">
@@ -126,9 +160,9 @@ const ColorWheel = () => {
             <div key={index} className="text-center">
               <div 
                 className="w-20 h-20 rounded-full mb-1" 
-                style={{ backgroundColor: color }}
+                style={{ backgroundColor: `rgb(${color.join(',')})` }}
               ></div>
-              <span className="text-sm">{color}</span>
+              <span className="text-sm">{rgbToHex(...color)}</span>
             </div>
           ))}
         </div>
@@ -138,7 +172,7 @@ const ColorWheel = () => {
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Tip</AlertTitle>
         <AlertDescription>
-          Click on the color wheel to change the base color and see how it affects the harmony!
+          Use the color wheel to change the base color and see how it affects the harmony!
         </AlertDescription>
       </Alert>
     </div>
